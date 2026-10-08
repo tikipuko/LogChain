@@ -1,0 +1,16 @@
+# Xcode
+.DS_Store
+build/
+DerivedData/
+*.moved-aside
+*.pbxuser
+*.xcuserstate
+xcuserdata/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# CocoaPods / Carthage (if ever added)
+Pods/
+Carthage/Build/
