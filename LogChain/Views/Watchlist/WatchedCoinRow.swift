@@ -2,6 +2,8 @@
 //  WatchedCoinRow.swift
 //  LogChain
 //
+//  Created by Correia, Jose Bastos on 03/10/2026.
+//
 
 import SwiftUI
 
