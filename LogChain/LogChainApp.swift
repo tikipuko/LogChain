@@ -14,7 +14,7 @@ struct LogChainApp: App {
 
     var body: some Scene {
         WindowGroup {
-            WatchlistView()
+            RootTabView()
         }
         .modelContainer(modelContainer)
     }

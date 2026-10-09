@@ -4,8 +4,10 @@ A native iOS watchlist app for tracking cryptocurrency prices, built with SwiftU
 
 ## Features
 
+- **Tab bar** — Watchlist, Markets and Settings tabs.
 - **Watchlist** — add coins and track live prices, with price history charts per coin.
-- **Search** — find coins by name or symbol to add to your watchlist.
+- **Markets** — browse top coins and search by name or symbol, adding any of them to your watchlist.
+- **Settings** — clear the watchlist, app version and CoinGecko attribution.
 - **Detail view** — per-coin price history chart with a timeframe picker (e.g. 24h / 7d / 30d).
 - **Offline-friendly** — prices are persisted locally with SwiftData, so the watchlist still shows last-known values without a connection.
 - **Smart refresh** — refreshes on launch and on returning to the foreground, throttled to avoid redundant calls.
@@ -29,7 +31,10 @@ LogChain/
 ├── Persistence/        # SwiftData container setup
 ├── ViewModels/          # Observable view models
 ├── Views/
+│   ├── RootTabView.swift # Tab bar
 │   ├── Watchlist/       # Main list + empty state
+│   ├── Markets/         # Browse & search top coins
+│   ├── Settings/        # Watchlist reset + about
 │   ├── AddCoin/         # Search & add flow
 │   ├── Detail/          # Coin detail + price chart
 │   └── Shared/          # Loading/error/percent-change components

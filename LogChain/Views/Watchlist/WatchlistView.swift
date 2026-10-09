@@ -18,7 +18,7 @@ struct WatchlistView: View {
     var body: some View {
         NavigationStack {
             content
-                .navigationTitle("LogChain")
+                .navigationTitle("Watchlist")
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
