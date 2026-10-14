@@ -1,0 +1,15 @@
+//
+//  Base.xcconfig
+//  LogChain
+//
+//  Settings shared by every environment. Each environment's .xcconfig
+//  includes this file and overrides the values below.
+//
+
+BASE_BUNDLE_IDENTIFIER = josebcorreia.LogChain
+
+// `//` starts a comment in .xcconfig, so URLs use `/$()/` to break it up.
+API_BASE_URL = https:/$()/api.coingecko.com/api/v3
+
+INFOPLIST_FILE = Config/Info.plist
+INFOPLIST_KEY_CFBundleDisplayName = $(APP_DISPLAY_NAME)

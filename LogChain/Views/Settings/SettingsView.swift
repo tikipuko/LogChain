@@ -25,6 +25,9 @@ struct SettingsView: View {
 
                 Section("About") {
                     LabeledContent("Version", value: appVersion)
+                    if !AppEnvironment.current.isProduction {
+                        LabeledContent("Environment", value: AppEnvironment.current.rawValue)
+                    }
                     Link("Market data by CoinGecko", destination: URL(string: "https://www.coingecko.com")!)
                 }
             }

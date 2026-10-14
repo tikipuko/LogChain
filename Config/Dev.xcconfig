@@ -1,0 +1,11 @@
+//
+//  Dev.xcconfig
+//  LogChain
+//
+
+#include "Base.xcconfig"
+
+APP_ENV = Dev
+APP_DISPLAY_NAME = LogChain Dev
+PRODUCT_BUNDLE_IDENTIFIER = $(BASE_BUNDLE_IDENTIFIER).dev
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEV

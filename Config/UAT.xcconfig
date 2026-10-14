@@ -1,0 +1,11 @@
+//
+//  UAT.xcconfig
+//  LogChain
+//
+
+#include "Base.xcconfig"
+
+APP_ENV = UAT
+APP_DISPLAY_NAME = LogChain UAT
+PRODUCT_BUNDLE_IDENTIFIER = $(BASE_BUNDLE_IDENTIFIER).uat
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) UAT

@@ -1,0 +1,11 @@
+//
+//  SIT.xcconfig
+//  LogChain
+//
+
+#include "Base.xcconfig"
+
+APP_ENV = SIT
+APP_DISPLAY_NAME = LogChain SIT
+PRODUCT_BUNDLE_IDENTIFIER = $(BASE_BUNDLE_IDENTIFIER).sit
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) SIT

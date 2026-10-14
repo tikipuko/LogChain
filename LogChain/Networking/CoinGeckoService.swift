@@ -8,12 +8,17 @@
 import Foundation
 
 final class CoinGeckoService: CoinGeckoAPI {
-    private let baseURL = URL(string: "https://api.coingecko.com/api/v3")!
+    private let baseURL: URL
     private let httpClient: HTTPClient
     private let rateLimiter: RateLimiter
     private let cache = MarketsCache()
 
-    init(httpClient: HTTPClient = HTTPClient(), rateLimiter: RateLimiter = RateLimiter()) {
+    init(
+        baseURL: URL = AppEnvironment.current.apiBaseURL,
+        httpClient: HTTPClient = HTTPClient(),
+        rateLimiter: RateLimiter = RateLimiter()
+    ) {
+        self.baseURL = baseURL
         self.httpClient = httpClient
         self.rateLimiter = rateLimiter
     }

@@ -39,6 +39,7 @@ LogChain/
 │   ├── Detail/          # Coin detail + price chart
 │   └── Shared/          # Loading/error/percent-change components
 └── Formatting/          # Currency formatting helpers
+Config/                  # Per-environment .xcconfig files + Info.plist keys
 ```
 
 ## Requirements
@@ -52,4 +53,20 @@ LogChain/
 open LogChain.xcodeproj
 ```
 
-Build and run the `LogChain` scheme on a simulator or device.
+Pick a scheme for the environment you want and run it on a simulator or device.
+
+## Environments
+
+Each environment has its own build configuration, scheme and `.xcconfig` file in `Config/`:
+
+| Scheme          | Configuration | Bundle ID                   | Home screen name | Optimised |
+|-----------------|---------------|-----------------------------|------------------|-----------|
+| `LogChain Dev`  | Dev           | `josebcorreia.LogChain.dev` | LogChain Dev     | No        |
+| `LogChain SIT`  | SIT           | `josebcorreia.LogChain.sit` | LogChain SIT     | Yes       |
+| `LogChain UAT`  | UAT           | `josebcorreia.LogChain.uat` | LogChain UAT     | Yes       |
+| `LogChain Prod` | Prod          | `josebcorreia.LogChain`     | LogChain         | Yes       |
+
+- Different bundle IDs let all four builds sit side by side on one device.
+- Settings shows the current environment in every build except Prod.
+- In code, read `AppEnvironment.current`, or use the `DEV` / `SIT` / `UAT` / `PROD` compilation conditions (`#if DEV`).
+- Per-environment values (such as `API_BASE_URL`) live in `Config/<Env>.xcconfig`; shared defaults are in `Config/Base.xcconfig`. To expose a new value to Swift, add it to the `.xcconfig` files and to `Config/Info.plist`.
