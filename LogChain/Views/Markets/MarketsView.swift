@@ -62,7 +62,7 @@ struct MarketsView: View {
         }
     }
 
-    /// Watched coins link to their detail page; others show an add button.
+    /// Watched coins link to their detail page; others can be added with a swipe.
     @ViewBuilder
     private func row<Content: View>(coinID: String, @ViewBuilder content: () -> Content, onAdd: @escaping () -> Void) -> some View {
         if let watched = watchedCoins.first(where: { $0.coinID == coinID }) {
@@ -75,15 +75,13 @@ struct MarketsView: View {
                 }
             }
         } else {
-            HStack {
-                content()
-                Button(action: onAdd) {
-                    Image(systemName: "plus.circle")
-                        .font(.title3)
+            content()
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(action: onAdd) {
+                        Label("Add", systemImage: "plus.circle")
+                    }
+                    .tint(.accentColor)
                 }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Add to watchlist")
-            }
         }
     }
 }
