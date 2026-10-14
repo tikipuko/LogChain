@@ -40,6 +40,7 @@ struct AddCoinView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done", action: confirm)
+                        .tint(.green)
                         .disabled(viewModel.pendingCoins.isEmpty || isAdding)
                 }
             }
@@ -70,6 +71,7 @@ struct AddCoinView: View {
                 }
             }
         }
+        .listStyle(.plain)
     }
 
     /// Coins already in the watchlist show a dimmed filled check and can't be selected again.
