@@ -8,52 +8,40 @@
 import SwiftUI
 import TipKit
 
+/// Hosted inside the Watchlist coordinator's NavigationStack. Rows push `Route`s and the
+/// "add" actions ask the coordinator to present the Add Coin sheet.
 struct WatchlistView: View {
+    let viewModel: WatchlistViewModel
+    let onAddCoin: () -> Void
+
     @Environment(\.scenePhase) private var scenePhase
-    private let dependencies: AppDependencies
-    @State private var viewModel: WatchlistViewModel
-    @State private var showingAddCoin = false
     private let swipeToRemoveTip = SwipeToRemoveTip()
 
-    init(dependencies: AppDependencies) {
-        self.dependencies = dependencies
-        _viewModel = State(wrappedValue: WatchlistViewModel(markets: dependencies.marketsRepository, watchlist: dependencies.watchlistRepository))
-    }
-
     var body: some View {
-        NavigationStack {
-            content
-                .navigationTitle("Watchlist")
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            showingAddCoin = true
-                        } label: {
-                            Image(systemName: "plus")
-                        }
+        content
+            .navigationTitle("Watchlist")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: onAddCoin) {
+                        Image(systemName: "plus")
                     }
                 }
-                .sheet(isPresented: $showingAddCoin) {
-                    AddCoinView(dependencies: dependencies)
+            }
+            .task {
+                await viewModel.refresh()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                Task {
+                    await viewModel.refreshIfNeeded()
                 }
-                .task {
-                    await viewModel.refresh()
-                }
-                .onChange(of: scenePhase) { _, newPhase in
-                    guard newPhase == .active else { return }
-                    Task {
-                        await viewModel.refreshIfNeeded()
-                    }
-                }
-        }
+            }
     }
 
     @ViewBuilder
     private var content: some View {
         if viewModel.coins.isEmpty {
-            WatchlistEmptyStateView {
-                showingAddCoin = true
-            }
+            WatchlistEmptyStateView(onAdd: onAddCoin)
         } else {
             List {
                 TipView(swipeToRemoveTip)
@@ -67,7 +55,7 @@ struct WatchlistView: View {
                 }
 
                 ForEach(viewModel.coins) { coin in
-                    NavigationLink(value: CoinSummary(coin)) {
+                    NavigationLink(value: Route.coinDetail(CoinSummary(coin))) {
                         WatchedCoinRow(coin: coin)
                     }
                 }
@@ -75,9 +63,6 @@ struct WatchlistView: View {
             }
             .refreshable {
                 await viewModel.refresh()
-            }
-            .navigationDestination(for: CoinSummary.self) { coin in
-                CoinDetailView(coin: coin, markets: dependencies.marketsRepository)
             }
         }
     }
@@ -89,5 +74,11 @@ struct WatchlistView: View {
 }
 
 #Preview {
-    WatchlistView(dependencies: .preview)
+    let dependencies = AppDependencies.preview
+    NavigationStack {
+        WatchlistView(
+            viewModel: WatchlistViewModel(markets: dependencies.marketsRepository, watchlist: dependencies.watchlistRepository),
+            onAddCoin: {}
+        )
+    }
 }

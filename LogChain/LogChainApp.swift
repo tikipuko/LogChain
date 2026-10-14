@@ -10,7 +10,7 @@ import TipKit
 
 @main
 struct LogChainApp: App {
-    private let dependencies = AppDependencies()
+    @State private var coordinator = AppCoordinator(dependencies: AppDependencies())
 
     init() {
         #if DEBUG
@@ -25,7 +25,7 @@ struct LogChainApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView(dependencies: dependencies)
+            AppCoordinatorView(coordinator: coordinator)
         }
     }
 }

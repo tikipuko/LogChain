@@ -8,54 +8,44 @@
 import SwiftUI
 import TipKit
 
+/// Hosted inside the Markets coordinator's NavigationStack; rows push `Route`s the coordinator resolves.
 struct MarketsView: View {
-    private let dependencies: AppDependencies
-    @State private var viewModel: MarketsViewModel
+    @Bindable var viewModel: MarketsViewModel
     private let swipeToAddTip = SwipeToAddTip()
 
-    init(dependencies: AppDependencies) {
-        self.dependencies = dependencies
-        _viewModel = State(wrappedValue: MarketsViewModel(markets: dependencies.marketsRepository, watchlist: dependencies.watchlistRepository))
-    }
-
     var body: some View {
-        NavigationStack {
-            Group {
-                if let errorState = viewModel.errorState {
-                    ErrorStateView(state: errorState) {
-                        Task { await viewModel.reloadBrowseList() }
-                    }
-                } else if viewModel.isLoading && viewModel.browseResults.isEmpty && viewModel.searchResults.isEmpty {
-                    LoadingView()
-                } else {
-                    list
+        Group {
+            if let errorState = viewModel.errorState {
+                ErrorStateView(state: errorState) {
+                    Task { await viewModel.reloadBrowseList() }
                 }
+            } else if viewModel.isLoading && viewModel.browseResults.isEmpty && viewModel.searchResults.isEmpty {
+                LoadingView()
+            } else {
+                list
             }
-            // Attached to the Group (not the list) so the chips stay available while loading or after an error.
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if !viewModel.isSearching {
-                    MarketsCategoryChips(selection: $viewModel.selectedCategories)
-                        .background(.bar)
-                }
+        }
+        // Attached to the Group (not the list) so the chips stay available while loading or after an error.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !viewModel.isSearching {
+                MarketsCategoryChips(selection: $viewModel.selectedCategories)
+                    .background(.bar)
             }
-            .navigationTitle("Markets")
-            .searchable(text: $viewModel.searchText, prompt: "Search coins")
-            .toolbar {
-                if !viewModel.isSearching {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        sortFilterMenu {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                                .accessibilityLabel("Sort and filter")
-                        }
+        }
+        .navigationTitle("Markets")
+        .searchable(text: $viewModel.searchText, prompt: "Search coins")
+        .toolbar {
+            if !viewModel.isSearching {
+                ToolbarItem(placement: .topBarTrailing) {
+                    sortFilterMenu {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .accessibilityLabel("Sort and filter")
                     }
                 }
             }
-            .navigationDestination(for: CoinSummary.self) { coin in
-                CoinDetailView(coin: coin, markets: dependencies.marketsRepository)
-            }
-            .task {
-                await viewModel.loadBrowseList()
-            }
+        }
+        .task {
+            await viewModel.loadBrowseList()
         }
     }
 
@@ -102,7 +92,7 @@ struct MarketsView: View {
 
     /// Every coin links to its detail page; coins not yet watched can be added with a swipe.
     private func row<Content: View>(summary: CoinSummary, @ViewBuilder content: () -> Content, onAdd: @escaping () -> Void) -> some View {
-        NavigationLink(value: summary) {
+        NavigationLink(value: Route.coinDetail(summary)) {
             content()
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -121,5 +111,8 @@ struct MarketsView: View {
 }
 
 #Preview {
-    MarketsView(dependencies: .preview)
+    let dependencies = AppDependencies.preview
+    NavigationStack {
+        MarketsView(viewModel: MarketsViewModel(markets: dependencies.marketsRepository, watchlist: dependencies.watchlistRepository))
+    }
 }
