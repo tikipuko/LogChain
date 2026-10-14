@@ -7,12 +7,14 @@
 
 import SwiftUI
 
+/// Presented as a sheet by the Watchlist coordinator, which also decides how it is closed.
 struct AddCoinView: View {
-    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: MarketsViewModel
+    private let onClose: () -> Void
 
-    init(dependencies: AppDependencies) {
-        _viewModel = State(wrappedValue: MarketsViewModel(markets: dependencies.marketsRepository, watchlist: dependencies.watchlistRepository))
+    init(viewModel: MarketsViewModel, onClose: @escaping () -> Void) {
+        _viewModel = State(wrappedValue: viewModel)
+        self.onClose = onClose
     }
 
     var body: some View {
@@ -32,7 +34,7 @@ struct AddCoinView: View {
             .searchable(text: $viewModel.searchText, prompt: "Search coins")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel", action: onClose)
                 }
             }
             .task {
@@ -53,7 +55,7 @@ struct AddCoinView: View {
                     Button {
                         Task {
                             if await viewModel.addFromSearchResult(result) {
-                                dismiss()
+                                onClose()
                             }
                         }
                     } label: {
@@ -65,7 +67,7 @@ struct AddCoinView: View {
                 ForEach(viewModel.browseResults, id: \.id) { dto in
                     Button {
                         if viewModel.add(dto) {
-                            dismiss()
+                            onClose()
                         }
                     } label: {
                         CoinSearchResultRow(imageURL: dto.image, name: dto.name, symbol: dto.symbol, price: dto.currentPrice, change24h: dto.priceChangePercentage24h)
