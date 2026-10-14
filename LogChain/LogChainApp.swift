@@ -11,7 +11,7 @@ import TipKit
 
 @main
 struct LogChainApp: App {
-    private let modelContainer = PersistenceController.makeContainer()
+    private let dependencies = AppDependencies()
 
     init() {
         #if DEBUG
@@ -28,6 +28,6 @@ struct LogChainApp: App {
         WindowGroup {
             RootTabView()
         }
-        .modelContainer(modelContainer)
+        .modelContainer(dependencies.modelContainer)
     }
 }
