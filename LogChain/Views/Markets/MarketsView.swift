@@ -6,14 +6,17 @@
 //
 
 import SwiftUI
-import SwiftData
 import TipKit
 
 struct MarketsView: View {
-    @Query(sort: \WatchedCoin.sortOrder) private var watchedCoins: [WatchedCoin]
-    @Environment(\.modelContext) private var modelContext
-    @State private var viewModel = AddCoinViewModel()
+    private let dependencies: AppDependencies
+    @State private var viewModel: MarketsViewModel
     private let swipeToAddTip = SwipeToAddTip()
+
+    init(dependencies: AppDependencies) {
+        self.dependencies = dependencies
+        _viewModel = State(wrappedValue: MarketsViewModel(markets: dependencies.marketsRepository, watchlist: dependencies.watchlistRepository))
+    }
 
     var body: some View {
         NavigationStack {
@@ -48,7 +51,7 @@ struct MarketsView: View {
                 }
             }
             .navigationDestination(for: CoinSummary.self) { coin in
-                CoinDetailView(coin: coin)
+                CoinDetailView(coin: coin, markets: dependencies.marketsRepository)
             }
             .task {
                 await viewModel.loadBrowseList()
@@ -66,7 +69,7 @@ struct MarketsView: View {
                     row(summary: CoinSummary(coinID: result.id, name: result.name, price: nil, change24h: nil)) {
                         CoinSearchResultRow(imageURL: result.thumb, name: result.name, symbol: result.symbol, price: nil, change24h: nil)
                     } onAdd: {
-                        Task { _ = await viewModel.addFromSearchResult(result, modelContext: modelContext) }
+                        Task { _ = await viewModel.addFromSearchResult(result) }
                     }
                 }
             } else {
@@ -78,7 +81,7 @@ struct MarketsView: View {
                     row(summary: CoinSummary(coinID: dto.id, name: dto.name, price: dto.currentPrice, change24h: dto.priceChangePercentage24h)) {
                         CoinSearchResultRow(imageURL: dto.image, name: dto.name, symbol: dto.symbol, price: dto.currentPrice, change24h: dto.priceChangePercentage24h)
                     } onAdd: {
-                        viewModel.add(coinID: dto.id, symbol: dto.symbol, name: dto.name, imageURL: dto.image, price: dto.currentPrice, change24h: dto.priceChangePercentage24h, modelContext: modelContext)
+                        viewModel.add(dto)
                     }
                 }
             }
@@ -103,7 +106,7 @@ struct MarketsView: View {
             content()
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !watchedCoins.contains(where: { $0.coinID == summary.coinID }) {
+            if !viewModel.isWatched(coinID: summary.coinID) {
                 Button {
                     onAdd()
                     swipeToAddTip.invalidate(reason: .actionPerformed)
@@ -118,6 +121,5 @@ struct MarketsView: View {
 }
 
 #Preview {
-    MarketsView()
-        .modelContainer(for: WatchedCoin.self, inMemory: true)
+    MarketsView(dependencies: .preview)
 }

@@ -6,12 +6,14 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct SettingsView: View {
-    @Query private var watchedCoins: [WatchedCoin]
-    @Environment(\.modelContext) private var modelContext
+    @State private var viewModel: SettingsViewModel
     @State private var showingClearConfirmation = false
+
+    init(dependencies: AppDependencies) {
+        _viewModel = State(wrappedValue: SettingsViewModel(watchlist: dependencies.watchlistRepository))
+    }
 
     var body: some View {
         NavigationStack {
@@ -20,40 +22,25 @@ struct SettingsView: View {
                     Button("Clear Watchlist", role: .destructive) {
                         showingClearConfirmation = true
                     }
-                    .disabled(watchedCoins.isEmpty)
+                    .disabled(!viewModel.hasWatchedCoins)
                 }
 
                 Section("About") {
-                    LabeledContent("Version", value: appVersion)
-                    if !AppEnvironment.current.isProduction {
-                        LabeledContent("Environment", value: AppEnvironment.current.rawValue)
+                    LabeledContent("Version", value: viewModel.appVersion)
+                    if let environmentName = viewModel.environmentName {
+                        LabeledContent("Environment", value: environmentName)
                     }
                     Link("Market data by CoinGecko", destination: URL(string: "https://www.coingecko.com")!)
                 }
             }
             .navigationTitle("Settings")
             .confirmationDialog("Remove all coins from your watchlist?", isPresented: $showingClearConfirmation, titleVisibility: .visible) {
-                Button("Clear Watchlist", role: .destructive, action: clearWatchlist)
+                Button("Clear Watchlist", role: .destructive, action: viewModel.clearWatchlist)
             }
         }
-    }
-
-    private var appVersion: String {
-        let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "–"
-        let build = info?["CFBundleVersion"] as? String ?? "–"
-        return "\(version) (\(build))"
-    }
-
-    private func clearWatchlist() {
-        for coin in watchedCoins {
-            modelContext.delete(coin)
-        }
-        try? modelContext.save()
     }
 }
 
 #Preview {
-    SettingsView()
-        .modelContainer(for: WatchedCoin.self, inMemory: true)
+    SettingsView(dependencies: .preview)
 }
