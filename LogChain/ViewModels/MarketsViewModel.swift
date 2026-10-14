@@ -8,6 +8,20 @@
 import Foundation
 import Observation
 
+/// A coin picked in the Add Coin sheet, waiting to be added when the user taps Done.
+/// Search results carry no price yet, so they are priced when added.
+enum PendingCoin {
+    case market(CoinMarketDTO)
+    case search(CoinSearchResultDTO)
+
+    var id: String {
+        switch self {
+        case .market(let dto): return dto.id
+        case .search(let result): return result.id
+        }
+    }
+}
+
 @Observable
 final class MarketsViewModel {
     var searchText: String = "" {
@@ -29,7 +43,7 @@ final class MarketsViewModel {
     private(set) var searchResults: [CoinSearchResultDTO] = []
     private(set) var isLoading = false
     private(set) var errorState: ErrorState?
-    private(set) var duplicateMessage: String?
+    private(set) var pendingCoins: [PendingCoin] = []
 
     @ObservationIgnored private let markets: MarketsRepository
     @ObservationIgnored private let watchlist: WatchlistRepository
@@ -153,25 +167,42 @@ final class MarketsViewModel {
         }
     }
 
-    func clearDuplicateMessage() {
-        duplicateMessage = nil
-    }
-
+    /// Returns false if the coin was already in the watchlist.
     @discardableResult
     func add(coinID: String, symbol: String, name: String, imageURL: String, price: Double, change24h: Double?) -> Bool {
-        switch watchlist.add(coinID: coinID, symbol: symbol, name: name, imageURL: imageURL, price: price, change24h: change24h) {
-        case .added:
-            return true
-        case .duplicate:
-            duplicateMessage = "\(name) is already in your watchlist."
-            return false
-        }
+        watchlist.add(coinID: coinID, symbol: symbol, name: name, imageURL: imageURL, price: price, change24h: change24h) == .added
     }
 
     /// Adds a coin shown in the browse list.
     @discardableResult
     func add(_ dto: CoinMarketDTO) -> Bool {
         add(coinID: dto.id, symbol: dto.symbol, name: dto.name, imageURL: dto.image, price: dto.currentPrice, change24h: dto.priceChangePercentage24h)
+    }
+
+    func isPending(coinID: String) -> Bool {
+        pendingCoins.contains { $0.id == coinID }
+    }
+
+    /// Selects or deselects a coin in the Add Coin sheet. Coins already watched can't be selected.
+    func togglePending(_ coin: PendingCoin) {
+        guard !isWatched(coinID: coin.id) else { return }
+        if let index = pendingCoins.firstIndex(where: { $0.id == coin.id }) {
+            pendingCoins.remove(at: index)
+        } else {
+            pendingCoins.append(coin)
+        }
+    }
+
+    /// Adds every selected coin in the order it was picked, then clears the selection.
+    func addPendingCoins() async {
+        let coins = pendingCoins
+        for coin in coins {
+            switch coin {
+            case .market(let dto): add(dto)
+            case .search(let result): _ = await addFromSearchResult(result)
+            }
+        }
+        pendingCoins = []
     }
 
     /// For results that came from /search (no price yet), fetch a one-off price before adding.
