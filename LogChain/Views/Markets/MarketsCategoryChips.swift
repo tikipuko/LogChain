@@ -14,16 +14,26 @@ struct MarketsCategoryChips: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                chip(title: MarketCategory.all.title, isSelected: selection.isEmpty) {
-                    selection = []
+                chip(isSelected: selection.isEmpty, action: { selection = [] }) {
+                    Text(MarketCategory.all.title)
                 }
                 ForEach(MarketCategory.allCases.filter { $0 != .all }) { category in
-                    chip(title: category.title, isSelected: selection.contains(category)) {
+                    chip(isSelected: selection.contains(category), action: {
                         if selection.contains(category) {
                             selection.remove(category)
                         } else {
                             selection.insert(category)
                         }
+                    }) {
+                        Text(category.title)
+                    }
+                }
+
+                // Last chip: only shown while something is selected, and puts the list back to "All".
+                if !selection.isEmpty {
+                    chip(isSelected: false, action: { selection = [] }) {
+                        Image(systemName: "xmark")
+                            .accessibilityLabel("Clear categories")
                     }
                 }
             }
@@ -32,9 +42,9 @@ struct MarketsCategoryChips: View {
         }
     }
 
-    private func chip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+    private func chip<Label: View>(isSelected: Bool, action: @escaping () -> Void, @ViewBuilder label: () -> Label) -> some View {
         Button(action: action) {
-            Text(title)
+            label()
                 .font(.subheadline.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
