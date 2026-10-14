@@ -1,16 +1,15 @@
 //
-//  AddCoinViewModel.swift
+//  MarketsViewModel.swift
 //  LogChain
 //
 //  Created by Correia, Jose Bastos on 03/10/2026.
 //
 
 import Foundation
-import SwiftData
 import Observation
 
 @Observable
-final class AddCoinViewModel {
+final class MarketsViewModel {
     var searchText: String = "" {
         didSet { scheduleSearch() }
     }
@@ -32,15 +31,22 @@ final class AddCoinViewModel {
     private(set) var errorState: ErrorState?
     private(set) var duplicateMessage: String?
 
-    private let api: CoinGeckoAPI
+    @ObservationIgnored private let markets: MarketsRepository
+    @ObservationIgnored private let watchlist: WatchlistRepository
     private var searchTask: Task<Void, Never>?
     private var categoryTask: Task<Void, Never>?
     private var browseRequestID = 0
 
     var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    init(api: CoinGeckoAPI = CoinGeckoService()) {
-        self.api = api
+    init(markets: MarketsRepository, watchlist: WatchlistRepository) {
+        self.markets = markets
+        self.watchlist = watchlist
+    }
+
+    /// Reads the observable watchlist, so views using it update when coins are added or removed.
+    func isWatched(coinID: String) -> Bool {
+        watchlist.contains(coinID: coinID)
     }
 
     /// Browse results after applying the gainers/losers filter and the chosen sort.
@@ -95,31 +101,13 @@ final class AddCoinViewModel {
         await Task {
             let outcome: Result<[CoinMarketDTO], Error>
             do {
-                outcome = .success(try await fetchBrowseResults(categoryIDs: categoryIDs, requestID: requestID))
+                // The repository stops between requests once a newer reload has superseded this one.
+                outcome = .success(try await markets.browse(categoryIDs: categoryIDs, shouldContinue: { requestID == browseRequestID }))
             } catch {
                 outcome = .failure(error)
             }
             finishBrowseLoad(outcome, requestID: requestID)
         }.value
-    }
-
-    /// CoinGecko takes one category per request, so several chips are fetched one after another,
-    /// de-duplicated and put back in market-cap order.
-    /// Stops between requests once a newer reload has superseded this one.
-    private func fetchBrowseResults(categoryIDs: [String], requestID: Int) async throws -> [CoinMarketDTO] {
-        guard categoryIDs.count > 1 else {
-            return try await api.topMarkets(page: 1, perPage: 50, category: categoryIDs.first)
-        }
-
-        var seen = Set<String>()
-        var merged: [CoinMarketDTO] = []
-        for id in categoryIDs {
-            guard requestID == browseRequestID else { throw CancellationError() }
-            for coin in try await api.topMarkets(page: 1, perPage: 50, category: id) where seen.insert(coin.id).inserted {
-                merged.append(coin)
-            }
-        }
-        return merged.sorted { ($0.marketCap ?? 0) > ($1.marketCap ?? 0) }
     }
 
     private func finishBrowseLoad(_ outcome: Result<[CoinMarketDTO], Error>, requestID: Int) {
@@ -154,7 +142,7 @@ final class AddCoinViewModel {
         isLoading = true
         defer { isLoading = false }
         do {
-            let results = try await api.search(query: query)
+            let results = try await markets.search(query: query)
             guard !Task.isCancelled else { return }
             searchResults = results
             errorState = nil
@@ -170,34 +158,27 @@ final class AddCoinViewModel {
     }
 
     @discardableResult
-    func add(coinID: String, symbol: String, name: String, imageURL: String, price: Double, change24h: Double?, modelContext: ModelContext) -> Bool {
-        let descriptor = FetchDescriptor<WatchedCoin>()
-        let existing = (try? modelContext.fetch(descriptor)) ?? []
-
-        if existing.contains(where: { $0.coinID == coinID }) {
+    func add(coinID: String, symbol: String, name: String, imageURL: String, price: Double, change24h: Double?) -> Bool {
+        switch watchlist.add(coinID: coinID, symbol: symbol, name: name, imageURL: imageURL, price: price, change24h: change24h) {
+        case .added:
+            return true
+        case .duplicate:
             duplicateMessage = "\(name) is already in your watchlist."
             return false
         }
+    }
 
-        let coin = WatchedCoin(
-            coinID: coinID,
-            symbol: symbol,
-            name: name,
-            imageURL: imageURL,
-            lastKnownPrice: price,
-            lastKnownChange24h: change24h,
-            sortOrder: existing.count
-        )
-        modelContext.insert(coin)
-        try? modelContext.save()
-        return true
+    /// Adds a coin shown in the browse list.
+    @discardableResult
+    func add(_ dto: CoinMarketDTO) -> Bool {
+        add(coinID: dto.id, symbol: dto.symbol, name: dto.name, imageURL: dto.image, price: dto.currentPrice, change24h: dto.priceChangePercentage24h)
     }
 
     /// For results that came from /search (no price yet), fetch a one-off price before adding.
-    func addFromSearchResult(_ result: CoinSearchResultDTO, modelContext: ModelContext) async -> Bool {
-        if let dto = try? await api.markets(ids: [result.id]).first {
-            return add(coinID: dto.id, symbol: dto.symbol, name: dto.name, imageURL: dto.image, price: dto.currentPrice, change24h: dto.priceChangePercentage24h, modelContext: modelContext)
+    func addFromSearchResult(_ result: CoinSearchResultDTO) async -> Bool {
+        if let dto = try? await markets.quotes(ids: [result.id]).first {
+            return add(dto)
         }
-        return add(coinID: result.id, symbol: result.symbol, name: result.name, imageURL: result.thumb, price: 0, change24h: nil, modelContext: modelContext)
+        return add(coinID: result.id, symbol: result.symbol, name: result.name, imageURL: result.thumb, price: 0, change24h: nil)
     }
 }

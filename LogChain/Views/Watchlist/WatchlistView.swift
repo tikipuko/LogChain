@@ -6,16 +6,19 @@
 //
 
 import SwiftUI
-import SwiftData
 import TipKit
 
 struct WatchlistView: View {
-    @Query(sort: \WatchedCoin.sortOrder) private var watchedCoins: [WatchedCoin]
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
-    @State private var viewModel = WatchlistViewModel()
+    private let dependencies: AppDependencies
+    @State private var viewModel: WatchlistViewModel
     @State private var showingAddCoin = false
     private let swipeToRemoveTip = SwipeToRemoveTip()
+
+    init(dependencies: AppDependencies) {
+        self.dependencies = dependencies
+        _viewModel = State(wrappedValue: WatchlistViewModel(markets: dependencies.marketsRepository, watchlist: dependencies.watchlistRepository))
+    }
 
     var body: some View {
         NavigationStack {
@@ -31,15 +34,15 @@ struct WatchlistView: View {
                     }
                 }
                 .sheet(isPresented: $showingAddCoin) {
-                    AddCoinView()
+                    AddCoinView(dependencies: dependencies)
                 }
                 .task {
-                    await viewModel.refresh(coins: watchedCoins, modelContext: modelContext)
+                    await viewModel.refresh()
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     guard newPhase == .active else { return }
                     Task {
-                        await viewModel.refreshIfNeeded(coins: watchedCoins, modelContext: modelContext)
+                        await viewModel.refreshIfNeeded()
                     }
                 }
         }
@@ -47,7 +50,7 @@ struct WatchlistView: View {
 
     @ViewBuilder
     private var content: some View {
-        if watchedCoins.isEmpty {
+        if viewModel.coins.isEmpty {
             WatchlistEmptyStateView {
                 showingAddCoin = true
             }
@@ -58,37 +61,33 @@ struct WatchlistView: View {
 
                 if let errorState = viewModel.errorState {
                     ErrorStateView(state: errorState) {
-                        Task { await viewModel.refresh(coins: watchedCoins, modelContext: modelContext) }
+                        Task { await viewModel.refresh() }
                     }
                     .listRowSeparator(.hidden)
                 }
 
-                ForEach(watchedCoins) { coin in
-                    NavigationLink(value: coin) {
+                ForEach(viewModel.coins) { coin in
+                    NavigationLink(value: CoinSummary(coin)) {
                         WatchedCoinRow(coin: coin)
                     }
                 }
                 .onDelete(perform: delete)
             }
             .refreshable {
-                await viewModel.refresh(coins: watchedCoins, modelContext: modelContext)
+                await viewModel.refresh()
             }
-            .navigationDestination(for: WatchedCoin.self) { coin in
-                CoinDetailView(coin: coin)
+            .navigationDestination(for: CoinSummary.self) { coin in
+                CoinDetailView(coin: coin, markets: dependencies.marketsRepository)
             }
         }
     }
 
     private func delete(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(watchedCoins[index])
-        }
-        try? modelContext.save()
+        viewModel.remove(at: offsets)
         swipeToRemoveTip.invalidate(reason: .actionPerformed)
     }
 }
 
 #Preview {
-    WatchlistView()
-        .modelContainer(for: WatchedCoin.self, inMemory: true)
+    WatchlistView(dependencies: .preview)
 }

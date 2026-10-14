@@ -37,19 +37,19 @@ final class CoinDetailViewModel {
     private(set) var isLoading = false
     private(set) var errorState: ErrorState?
 
-    private let api: CoinGeckoAPI
+    @ObservationIgnored private let markets: MarketsRepository
     private let coinID: String
 
-    init(coinID: String, api: CoinGeckoAPI = CoinGeckoService()) {
+    init(coinID: String, markets: MarketsRepository) {
         self.coinID = coinID
-        self.api = api
+        self.markets = markets
     }
 
     func loadChart() async {
         isLoading = true
         defer { isLoading = false }
         do {
-            let dto = try await api.marketChart(id: coinID, days: selectedTimeframe.days)
+            let dto = try await markets.chart(id: coinID, days: selectedTimeframe.days)
             chartPoints = dto.toPricePoints()
             errorState = nil
         } catch let error as APIError {

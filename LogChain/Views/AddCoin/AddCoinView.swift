@@ -6,12 +6,14 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct AddCoinView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @State private var viewModel = AddCoinViewModel()
+    @State private var viewModel: MarketsViewModel
+
+    init(dependencies: AppDependencies) {
+        _viewModel = State(wrappedValue: MarketsViewModel(markets: dependencies.marketsRepository, watchlist: dependencies.watchlistRepository))
+    }
 
     var body: some View {
         NavigationStack {
@@ -50,7 +52,7 @@ struct AddCoinView: View {
                 ForEach(viewModel.searchResults) { result in
                     Button {
                         Task {
-                            if await viewModel.addFromSearchResult(result, modelContext: modelContext) {
+                            if await viewModel.addFromSearchResult(result) {
                                 dismiss()
                             }
                         }
@@ -62,7 +64,7 @@ struct AddCoinView: View {
             } else {
                 ForEach(viewModel.browseResults, id: \.id) { dto in
                     Button {
-                        if viewModel.add(coinID: dto.id, symbol: dto.symbol, name: dto.name, imageURL: dto.image, price: dto.currentPrice, change24h: dto.priceChangePercentage24h, modelContext: modelContext) {
+                        if viewModel.add(dto) {
                             dismiss()
                         }
                     } label: {

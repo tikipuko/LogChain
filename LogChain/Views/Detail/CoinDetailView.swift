@@ -32,13 +32,9 @@ struct CoinDetailView: View {
     @State private var viewModel: CoinDetailViewModel
     private let timeframeTip = TimeframeTip()
 
-    init(coin: CoinSummary) {
+    init(coin: CoinSummary, markets: MarketsRepository) {
         self.coin = coin
-        _viewModel = State(wrappedValue: CoinDetailViewModel(coinID: coin.coinID))
-    }
-
-    init(coin: WatchedCoin) {
-        self.init(coin: CoinSummary(coin))
+        _viewModel = State(wrappedValue: CoinDetailViewModel(coinID: coin.coinID, markets: markets))
     }
 
     var body: some View {

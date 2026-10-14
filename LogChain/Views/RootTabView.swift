@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftData
 
 enum AppTab: Hashable {
     case watchlist
@@ -15,24 +14,24 @@ enum AppTab: Hashable {
 }
 
 struct RootTabView: View {
+    let dependencies: AppDependencies
     @State private var selection: AppTab = .watchlist
 
     var body: some View {
         TabView(selection: $selection) {
             Tab("Watchlist", systemImage: "star", value: .watchlist) {
-                WatchlistView()
+                WatchlistView(dependencies: dependencies)
             }
             Tab("Markets", systemImage: "chart.line.uptrend.xyaxis", value: .markets) {
-                MarketsView()
+                MarketsView(dependencies: dependencies)
             }
             Tab("Settings", systemImage: "gearshape", value: .settings) {
-                SettingsView()
+                SettingsView(dependencies: dependencies)
             }
         }
     }
 }
 
 #Preview {
-    RootTabView()
-        .modelContainer(for: WatchedCoin.self, inMemory: true)
+    RootTabView(dependencies: .preview)
 }

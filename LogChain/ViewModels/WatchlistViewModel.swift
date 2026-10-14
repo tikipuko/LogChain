@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import SwiftData
 import Observation
 
 @Observable
@@ -15,27 +14,30 @@ final class WatchlistViewModel {
     private(set) var errorState: ErrorState?
     private(set) var lastRefreshDate: Date?
 
-    private let api: CoinGeckoAPI
+    @ObservationIgnored private let markets: MarketsRepository
+    @ObservationIgnored private let watchlist: WatchlistRepository
     private let foregroundRefreshThreshold: TimeInterval = 60
 
-    init(api: CoinGeckoAPI = CoinGeckoService()) {
-        self.api = api
+    var coins: [WatchedCoin] { watchlist.coins }
+
+    init(markets: MarketsRepository, watchlist: WatchlistRepository) {
+        self.markets = markets
+        self.watchlist = watchlist
     }
 
-    func refresh(coins: [WatchedCoin], modelContext: ModelContext) async {
+    func remove(at offsets: IndexSet) {
+        watchlist.remove(at: offsets)
+    }
+
+    func refresh() async {
+        let coins = watchlist.coins
         guard !coins.isEmpty else { return }
         isRefreshing = true
         defer { isRefreshing = false }
 
         do {
-            let dtos = try await api.markets(ids: coins.map(\.coinID))
-            let dtosByID = Dictionary(uniqueKeysWithValues: dtos.map { ($0.id, $0) })
-            for coin in coins {
-                if let dto = dtosByID[coin.coinID] {
-                    coin.apply(dto)
-                }
-            }
-            try modelContext.save()
+            let dtos = try await markets.quotes(ids: coins.map(\.coinID))
+            watchlist.apply(dtos)
             errorState = nil
             lastRefreshDate = .now
         } catch let error as APIError {
@@ -46,10 +48,10 @@ final class WatchlistViewModel {
         }
     }
 
-    func refreshIfNeeded(coins: [WatchedCoin], modelContext: ModelContext) async {
+    func refreshIfNeeded() async {
         if let lastRefreshDate, Date().timeIntervalSince(lastRefreshDate) < foregroundRefreshThreshold {
             return
         }
-        await refresh(coins: coins, modelContext: modelContext)
+        await refresh()
     }
 }

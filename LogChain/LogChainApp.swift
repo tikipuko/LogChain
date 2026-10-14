@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftData
 import TipKit
 
 @main
@@ -26,8 +25,7 @@ struct LogChainApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            RootTabView(dependencies: dependencies)
         }
-        .modelContainer(dependencies.modelContainer)
     }
 }
