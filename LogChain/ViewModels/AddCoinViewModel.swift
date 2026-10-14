@@ -15,6 +15,16 @@ final class AddCoinViewModel {
         didSet { scheduleSearch() }
     }
 
+    var selectedCategory: MarketCategory = .all {
+        didSet {
+            guard oldValue != selectedCategory else { return }
+            Task { await reloadBrowseList() }
+        }
+    }
+    var sort: MarketSort = .marketCap
+    var reverseOrder = false
+    var movers: MarketMovers = .all
+
     private(set) var browseResults: [CoinMarketDTO] = []
     private(set) var searchResults: [CoinSearchResultDTO] = []
     private(set) var isLoading = false
@@ -30,12 +40,37 @@ final class AddCoinViewModel {
         self.api = api
     }
 
+    /// Browse results after applying the gainers/losers filter and the chosen sort.
+    /// Sorting works on the loaded page only; the API returns market-cap order.
+    var displayedBrowseResults: [CoinMarketDTO] {
+        var results = browseResults
+        switch movers {
+        case .all: break
+        case .gainers: results = results.filter { ($0.priceChangePercentage24h ?? 0) > 0 }
+        case .losers: results = results.filter { ($0.priceChangePercentage24h ?? 0) < 0 }
+        }
+
+        switch sort {
+        case .marketCap: break
+        case .price: results.sort { $0.currentPrice > $1.currentPrice }
+        case .change24h: results.sort { ($0.priceChangePercentage24h ?? -.infinity) > ($1.priceChangePercentage24h ?? -.infinity) }
+        case .name: results.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        }
+
+        return reverseOrder ? results.reversed() : results
+    }
+
+    func reloadBrowseList() async {
+        browseResults = []
+        await loadBrowseList()
+    }
+
     func loadBrowseList() async {
         guard browseResults.isEmpty else { return }
         isLoading = true
         defer { isLoading = false }
         do {
-            browseResults = try await api.topMarkets(page: 1, perPage: 50)
+            browseResults = try await api.topMarkets(page: 1, perPage: 50, category: selectedCategory.apiID)
             errorState = nil
         } catch let error as APIError {
             errorState = ErrorState(apiError: error)

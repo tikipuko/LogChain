@@ -23,7 +23,7 @@ final class CoinGeckoService: CoinGeckoAPI {
         self.rateLimiter = rateLimiter
     }
 
-    func topMarkets(page: Int, perPage: Int) async throws -> [CoinMarketDTO] {
+    func topMarkets(page: Int, perPage: Int, category: String?) async throws -> [CoinMarketDTO] {
         var components = URLComponents(url: baseURL.appendingPathComponent("coins/markets"), resolvingAgainstBaseURL: false)!
         components.queryItems = [
             URLQueryItem(name: "vs_currency", value: "usd"),
@@ -32,6 +32,9 @@ final class CoinGeckoService: CoinGeckoAPI {
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "sparkline", value: "false"),
         ]
+        if let category {
+            components.queryItems?.append(URLQueryItem(name: "category", value: category))
+        }
         await rateLimiter.acquire()
         return try await httpClient.get(components.url!)
     }

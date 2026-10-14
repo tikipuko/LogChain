@@ -28,8 +28,38 @@ struct MarketsView: View {
                     list
                 }
             }
+            // Attached to the Group (not the list) so the controls stay available while loading or after an error.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if !viewModel.isSearching {
+                    MarketsCategoryChips(selection: $viewModel.selectedCategory)
+                        .background(.bar)
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if !viewModel.isSearching {
+                    sortFilterMenu {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 56, height: 56)
+                            .background(Color.accentColor, in: Circle())
+                            .shadow(radius: 4, y: 2)
+                    }
+                    .padding()
+                    .accessibilityLabel("Sort and filter")
+                }
+            }
             .navigationTitle("Markets")
             .searchable(text: $viewModel.searchText, prompt: "Search coins")
+            .toolbar {
+                if !viewModel.isSearching {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        sortFilterMenu {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                        }
+                    }
+                }
+            }
             .navigationDestination(for: CoinSummary.self) { coin in
                 CoinDetailView(coin: coin)
             }
@@ -53,7 +83,11 @@ struct MarketsView: View {
                     }
                 }
             } else {
-                ForEach(viewModel.browseResults, id: \.id) { dto in
+                if viewModel.displayedBrowseResults.isEmpty && !viewModel.isLoading {
+                    ContentUnavailableView("No coins match", systemImage: "line.3.horizontal.decrease.circle", description: Text("Try a different filter."))
+                        .listRowSeparator(.hidden)
+                }
+                ForEach(viewModel.displayedBrowseResults, id: \.id) { dto in
                     row(summary: CoinSummary(coinID: dto.id, name: dto.name, price: dto.currentPrice, change24h: dto.priceChangePercentage24h)) {
                         CoinSearchResultRow(imageURL: dto.image, name: dto.name, symbol: dto.symbol, price: dto.currentPrice, change24h: dto.priceChangePercentage24h)
                     } onAdd: {
@@ -65,6 +99,15 @@ struct MarketsView: View {
         .refreshable {
             await viewModel.loadBrowseList()
         }
+    }
+
+    private func sortFilterMenu<MenuLabel: View>(@ViewBuilder label: @escaping () -> MenuLabel) -> some View {
+        MarketsSortFilterMenu(
+            sort: $viewModel.sort,
+            reverseOrder: $viewModel.reverseOrder,
+            movers: $viewModel.movers,
+            label: label
+        )
     }
 
     /// Every coin links to its detail page; coins not yet watched can be added with a swipe.
@@ -79,6 +122,7 @@ struct MarketsView: View {
                     swipeToAddTip.invalidate(reason: .actionPerformed)
                 } label: {
                     Label("Add", systemImage: "plus.circle")
+                        .labelStyle(.iconOnly)
                 }
                 .tint(.accentColor)
             }
