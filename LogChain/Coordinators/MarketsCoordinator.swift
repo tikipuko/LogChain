@@ -19,10 +19,6 @@ final class MarketsCoordinator {
         self.factory = factory
         self.viewModel = factory.makeMarketsViewModel()
     }
-
-    func showCoinDetail(_ coin: CoinSummary) {
-        path.append(.coinDetail(coin))
-    }
 }
 
 struct MarketsCoordinatorView: View {
