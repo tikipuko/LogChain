@@ -18,6 +18,7 @@ final class AddCoinViewModel {
     var selectedCategory: MarketCategory = .all {
         didSet {
             guard oldValue != selectedCategory else { return }
+            browseResults = []
             Task { await reloadBrowseList() }
         }
     }
@@ -33,6 +34,7 @@ final class AddCoinViewModel {
 
     private let api: CoinGeckoAPI
     private var searchTask: Task<Void, Never>?
+    private var browseRequestID = 0
 
     var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -60,21 +62,42 @@ final class AddCoinViewModel {
         return reverseOrder ? results.reversed() : results
     }
 
-    func reloadBrowseList() async {
-        browseResults = []
-        await loadBrowseList()
-    }
-
+    /// Initial load: does nothing if results are already on screen.
     func loadBrowseList() async {
         guard browseResults.isEmpty else { return }
+        await reloadBrowseList()
+    }
+
+    /// Always refetches for the selected category (used by pull-to-refresh and chip changes).
+    /// Only the most recent request may update state, so a slow earlier response can't overwrite it.
+    func reloadBrowseList() async {
+        browseRequestID += 1
+        let requestID = browseRequestID
+        let category = selectedCategory.apiID
         isLoading = true
-        defer { isLoading = false }
-        do {
-            browseResults = try await api.topMarkets(page: 1, perPage: 50, category: selectedCategory.apiID)
+
+        // Unstructured (inherits the main actor) so SwiftUI cancelling the refresh gesture doesn't abort the request.
+        await Task {
+            let outcome: Result<[CoinMarketDTO], Error>
+            do {
+                outcome = .success(try await api.topMarkets(page: 1, perPage: 50, category: category))
+            } catch {
+                outcome = .failure(error)
+            }
+            finishBrowseLoad(outcome, requestID: requestID)
+        }.value
+    }
+
+    private func finishBrowseLoad(_ outcome: Result<[CoinMarketDTO], Error>, requestID: Int) {
+        guard requestID == browseRequestID else { return }
+        isLoading = false
+        switch outcome {
+        case .success(let results):
+            browseResults = results
             errorState = nil
-        } catch let error as APIError {
+        case .failure(let error as APIError):
             errorState = ErrorState(apiError: error)
-        } catch {
+        case .failure:
             errorState = .generic
         }
     }

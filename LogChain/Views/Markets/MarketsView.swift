@@ -20,7 +20,7 @@ struct MarketsView: View {
             Group {
                 if let errorState = viewModel.errorState {
                     ErrorStateView(state: errorState) {
-                        Task { await viewModel.loadBrowseList() }
+                        Task { await viewModel.reloadBrowseList() }
                     }
                 } else if viewModel.isLoading && viewModel.browseResults.isEmpty && viewModel.searchResults.isEmpty {
                     LoadingView()
@@ -28,25 +28,11 @@ struct MarketsView: View {
                     list
                 }
             }
-            // Attached to the Group (not the list) so the controls stay available while loading or after an error.
+            // Attached to the Group (not the list) so the chips stay available while loading or after an error.
             .safeAreaInset(edge: .top, spacing: 0) {
                 if !viewModel.isSearching {
                     MarketsCategoryChips(selection: $viewModel.selectedCategory)
                         .background(.bar)
-                }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                if !viewModel.isSearching {
-                    sortFilterMenu {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 56, height: 56)
-                            .background(Color.accentColor, in: Circle())
-                            .shadow(radius: 4, y: 2)
-                    }
-                    .padding()
-                    .accessibilityLabel("Sort and filter")
                 }
             }
             .navigationTitle("Markets")
@@ -56,6 +42,7 @@ struct MarketsView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         sortFilterMenu {
                             Image(systemName: "line.3.horizontal.decrease.circle")
+                                .accessibilityLabel("Sort and filter")
                         }
                     }
                 }
@@ -97,7 +84,7 @@ struct MarketsView: View {
             }
         }
         .refreshable {
-            await viewModel.loadBrowseList()
+            await viewModel.reloadBrowseList()
         }
     }
 
