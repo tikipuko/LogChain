@@ -14,24 +14,8 @@ struct MarketsView: View {
     private let swipeToAddTip = SwipeToAddTip()
 
     var body: some View {
-        Group {
-            if let errorState = viewModel.errorState {
-                ErrorStateView(state: errorState) {
-                    Task { await viewModel.reloadBrowseList() }
-                }
-            } else if viewModel.isLoading && viewModel.browseResults.isEmpty && viewModel.searchResults.isEmpty {
-                LoadingView()
-            } else {
-                list
-            }
-        }
-        // Attached to the Group (not the list) so the chips stay available while loading or after an error.
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if !viewModel.isSearching {
-                MarketsCategoryChips(selection: $viewModel.selectedCategories)
-                    .background(.bar)
-            }
-        }
+        // The List is the screen's only scroll view, so the large title and search field behave normally.
+        list
         .navigationTitle("Markets")
         .searchable(text: $viewModel.searchText, prompt: "Search coins")
         .toolbar {
@@ -51,10 +35,28 @@ struct MarketsView: View {
 
     private var list: some View {
         List {
+            // Inside the list (not a top inset) so the chips never pull the list off the navigation bar,
+            // and they stay visible while a category loads or after an error.
+            if !viewModel.isSearching {
+                MarketsCategoryChips(selection: $viewModel.selectedCategories)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
+
             TipView(swipeToAddTip)
                 .listRowSeparator(.hidden)
 
-            if viewModel.isSearching {
+            if let errorState = viewModel.errorState {
+                ErrorStateView(state: errorState) {
+                    Task { await viewModel.reloadBrowseList() }
+                }
+                .listRowSeparator(.hidden)
+            } else if viewModel.isLoading && viewModel.browseResults.isEmpty && viewModel.searchResults.isEmpty {
+                LoadingView()
+                    .frame(height: 240)
+                    .listRowSeparator(.hidden)
+            } else if viewModel.isSearching {
                 ForEach(viewModel.searchResults) { result in
                     row(summary: CoinSummary(coinID: result.id, name: result.name, price: nil, change24h: nil)) {
                         CoinSearchResultRow(imageURL: result.thumb, name: result.name, symbol: result.symbol, price: nil, change24h: nil)
