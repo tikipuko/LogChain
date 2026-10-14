@@ -14,3 +14,6 @@ xcuserdata/
 # CocoaPods / Carthage (if ever added)
 Pods/
 Carthage/Build/
+
+# graphify output
+graphify-out/
