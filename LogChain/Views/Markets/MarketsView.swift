@@ -30,7 +30,7 @@ struct MarketsView: View {
             }
             .navigationTitle("Markets")
             .searchable(text: $viewModel.searchText, prompt: "Search coins")
-            .navigationDestination(for: WatchedCoin.self) { coin in
+            .navigationDestination(for: CoinSummary.self) { coin in
                 CoinDetailView(coin: coin)
             }
             .task {
@@ -46,7 +46,7 @@ struct MarketsView: View {
 
             if viewModel.isSearching {
                 ForEach(viewModel.searchResults) { result in
-                    row(coinID: result.id) {
+                    row(summary: CoinSummary(coinID: result.id, name: result.name, price: nil, change24h: nil)) {
                         CoinSearchResultRow(imageURL: result.thumb, name: result.name, symbol: result.symbol, price: nil, change24h: nil)
                     } onAdd: {
                         Task { _ = await viewModel.addFromSearchResult(result, modelContext: modelContext) }
@@ -54,7 +54,7 @@ struct MarketsView: View {
                 }
             } else {
                 ForEach(viewModel.browseResults, id: \.id) { dto in
-                    row(coinID: dto.id) {
+                    row(summary: CoinSummary(coinID: dto.id, name: dto.name, price: dto.currentPrice, change24h: dto.priceChangePercentage24h)) {
                         CoinSearchResultRow(imageURL: dto.image, name: dto.name, symbol: dto.symbol, price: dto.currentPrice, change24h: dto.priceChangePercentage24h)
                     } onAdd: {
                         viewModel.add(coinID: dto.id, symbol: dto.symbol, name: dto.name, imageURL: dto.image, price: dto.currentPrice, change24h: dto.priceChangePercentage24h, modelContext: modelContext)
@@ -67,29 +67,21 @@ struct MarketsView: View {
         }
     }
 
-    /// Watched coins link to their detail page; others can be added with a swipe.
-    @ViewBuilder
-    private func row<Content: View>(coinID: String, @ViewBuilder content: () -> Content, onAdd: @escaping () -> Void) -> some View {
-        if let watched = watchedCoins.first(where: { $0.coinID == coinID }) {
-            NavigationLink(value: watched) {
-                HStack {
-                    content()
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.tint)
-                        .accessibilityLabel("In watchlist")
-                }
-            }
-        } else {
+    /// Every coin links to its detail page; coins not yet watched can be added with a swipe.
+    private func row<Content: View>(summary: CoinSummary, @ViewBuilder content: () -> Content, onAdd: @escaping () -> Void) -> some View {
+        NavigationLink(value: summary) {
             content()
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button {
-                        onAdd()
-                        swipeToAddTip.invalidate(reason: .actionPerformed)
-                    } label: {
-                        Label("Add", systemImage: "plus.circle")
-                    }
-                    .tint(.accentColor)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if !watchedCoins.contains(where: { $0.coinID == summary.coinID }) {
+                Button {
+                    onAdd()
+                    swipeToAddTip.invalidate(reason: .actionPerformed)
+                } label: {
+                    Label("Add", systemImage: "plus.circle")
                 }
+                .tint(.accentColor)
+            }
         }
     }
 }
