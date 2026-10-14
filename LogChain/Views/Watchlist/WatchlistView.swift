@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import TipKit
 
 struct WatchlistView: View {
     @Query(sort: \WatchedCoin.sortOrder) private var watchedCoins: [WatchedCoin]
@@ -14,6 +15,7 @@ struct WatchlistView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = WatchlistViewModel()
     @State private var showingAddCoin = false
+    private let swipeToRemoveTip = SwipeToRemoveTip()
 
     var body: some View {
         NavigationStack {
@@ -51,6 +53,9 @@ struct WatchlistView: View {
             }
         } else {
             List {
+                TipView(swipeToRemoveTip)
+                    .listRowSeparator(.hidden)
+
                 if let errorState = viewModel.errorState {
                     ErrorStateView(state: errorState) {
                         Task { await viewModel.refresh(coins: watchedCoins, modelContext: modelContext) }
@@ -79,6 +84,7 @@ struct WatchlistView: View {
             modelContext.delete(watchedCoins[index])
         }
         try? modelContext.save()
+        swipeToRemoveTip.invalidate(reason: .actionPerformed)
     }
 }
 

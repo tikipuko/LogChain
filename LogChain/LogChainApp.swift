@@ -7,10 +7,22 @@
 
 import SwiftUI
 import SwiftData
+import TipKit
 
 @main
 struct LogChainApp: App {
     private let modelContainer = PersistenceController.makeContainer()
+
+    init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--reset-tips") {
+            try? Tips.resetDatastore()
+        }
+        #endif
+        try? Tips.configure([
+            .displayFrequency(.immediate)
+        ])
+    }
 
     var body: some Scene {
         WindowGroup {

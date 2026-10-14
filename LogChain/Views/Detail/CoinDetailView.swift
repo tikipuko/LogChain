@@ -6,10 +6,12 @@
 //
 
 import SwiftUI
+import TipKit
 
 struct CoinDetailView: View {
     let coin: WatchedCoin
     @State private var viewModel: CoinDetailViewModel
+    private let timeframeTip = TimeframeTip()
 
     init(coin: WatchedCoin) {
         self.coin = coin
@@ -22,6 +24,10 @@ struct CoinDetailView: View {
                 header
 
                 TimeframePicker(selection: $viewModel.selectedTimeframe)
+                    .popoverTip(timeframeTip, arrowEdge: .top)
+                    .onChange(of: viewModel.selectedTimeframe) {
+                        timeframeTip.invalidate(reason: .actionPerformed)
+                    }
 
                 if let errorState = viewModel.errorState {
                     ErrorStateView(state: errorState) {

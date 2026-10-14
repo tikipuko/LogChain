@@ -7,11 +7,13 @@
 
 import SwiftUI
 import SwiftData
+import TipKit
 
 struct MarketsView: View {
     @Query(sort: \WatchedCoin.sortOrder) private var watchedCoins: [WatchedCoin]
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = AddCoinViewModel()
+    private let swipeToAddTip = SwipeToAddTip()
 
     var body: some View {
         NavigationStack {
@@ -39,6 +41,9 @@ struct MarketsView: View {
 
     private var list: some View {
         List {
+            TipView(swipeToAddTip)
+                .listRowSeparator(.hidden)
+
             if viewModel.isSearching {
                 ForEach(viewModel.searchResults) { result in
                     row(coinID: result.id) {
@@ -77,7 +82,10 @@ struct MarketsView: View {
         } else {
             content()
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(action: onAdd) {
+                    Button {
+                        onAdd()
+                        swipeToAddTip.invalidate(reason: .actionPerformed)
+                    } label: {
                         Label("Add", systemImage: "plus.circle")
                     }
                     .tint(.accentColor)
