@@ -21,10 +21,6 @@ final class WatchlistCoordinator {
         self.viewModel = factory.makeWatchlistViewModel()
     }
 
-    func showCoinDetail(_ coin: CoinSummary) {
-        path.append(.coinDetail(coin))
-    }
-
     func presentAddCoin() {
         sheet = .addCoin
     }

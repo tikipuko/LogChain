@@ -6,7 +6,7 @@ A native iOS watchlist app for tracking cryptocurrency prices, built with SwiftU
 
 - **Tab bar** — Watchlist, Markets and Settings tabs.
 - **Watchlist** — add coins and track live prices, with price history charts per coin.
-- **Markets** — browse top coins and search by name or symbol, adding any of them to your watchlist.
+- **Markets** — browse top coins by category (multi-select chips), sort and filter gainers/losers, search by name or symbol, open any coin's detail page and swipe to add it to your watchlist.
 - **Settings** — clear the watchlist, app version and CoinGecko attribution.
 - **Detail view** — per-coin price history chart with a timeframe picker (e.g. 24h / 7d / 30d).
 - **Offline-friendly** — prices are persisted locally with SwiftData, so the watchlist still shows last-known values without a connection.
@@ -15,7 +15,12 @@ A native iOS watchlist app for tracking cryptocurrency prices, built with SwiftU
 ## Architecture
 
 - **SwiftUI + SwiftData** for the UI and local persistence (`WatchedCoin` model).
-- **MVVM**: `@Observable` view models (`WatchlistViewModel`, `CoinDetailViewModel`, `AddCoinViewModel`) drive the views and own refresh/error state.
+- **MVVM-C** (Model–View–ViewModel–Coordinator):
+  - **Views** are passive: they render a view model and name the `Route` to push; they contain no `NavigationStack`, `@Query` or `ModelContext`.
+  - **View models** (`WatchlistViewModel`, `MarketsViewModel`, `CoinDetailViewModel`, `SettingsViewModel`) are `@Observable`, own screen state and depend only on repositories.
+  - **Coordinators** own navigation: `AppCoordinator` holds the selected tab and one child coordinator per tab (`WatchlistCoordinator`, `MarketsCoordinator`, `SettingsCoordinator`), each with a typed `[Route]` path. `ScreenFactory` builds view models and resolves routes into screens.
+  - **Repositories** sit between view models and data: `WatchlistRepository` is the single owner of the persisted watchlist (SwiftData), and `MarketsRepository` wraps the CoinGecko API (including merging several categories).
+  - **`AppDependencies`** is the composition root that builds the container and repositories once; `AppDependencies.preview` gives previews in-memory storage.
 - **Networking** — a small `CoinGeckoAPI` protocol backed by `CoinGeckoService`, with:
   - `HTTPClient` for requests and decoding,
   - `RateLimiter`, a sliding-window limiter that keeps calls under CoinGecko's free-tier budget,
@@ -26,12 +31,15 @@ A native iOS watchlist app for tracking cryptocurrency prices, built with SwiftU
 
 ```
 LogChain/
-├── Models/            # SwiftData model + CoinGecko DTOs
+├── App/               # AppDependencies (composition root)
+├── Coordinators/       # AppCoordinator, per-tab coordinators, Route, ScreenFactory
+├── Models/            # SwiftData model, CoinGecko DTOs, Markets filter/sort types
 ├── Networking/         # API protocol, HTTP client, rate limiter, errors
 ├── Persistence/        # SwiftData container setup
+├── Repositories/       # WatchlistRepository, MarketsRepository
+├── Tips/               # TipKit tips
 ├── ViewModels/          # Observable view models
 ├── Views/
-│   ├── RootTabView.swift # Tab bar
 │   ├── Watchlist/       # Main list + empty state
 │   ├── Markets/         # Browse & search top coins
 │   ├── Settings/        # Watchlist reset + about

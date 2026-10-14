@@ -10,7 +10,6 @@ import Observation
 
 @Observable
 final class WatchlistViewModel {
-    private(set) var isRefreshing = false
     private(set) var errorState: ErrorState?
     private(set) var lastRefreshDate: Date?
 
@@ -32,9 +31,6 @@ final class WatchlistViewModel {
     func refresh() async {
         let coins = watchlist.coins
         guard !coins.isEmpty else { return }
-        isRefreshing = true
-        defer { isRefreshing = false }
-
         do {
             let dtos = try await markets.quotes(ids: coins.map(\.coinID))
             watchlist.apply(dtos)
