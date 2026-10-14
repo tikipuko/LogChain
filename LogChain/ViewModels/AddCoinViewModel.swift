@@ -15,11 +15,11 @@ final class AddCoinViewModel {
         didSet { scheduleSearch() }
     }
 
-    var selectedCategory: MarketCategory = .all {
+    /// Selected category chips; empty means "All". Several categories show their combined coins.
+    var selectedCategories: Set<MarketCategory> = [] {
         didSet {
-            guard oldValue != selectedCategory else { return }
-            browseResults = []
-            Task { await reloadBrowseList() }
+            guard oldValue != selectedCategories else { return }
+            scheduleCategoryReload()
         }
     }
     var sort: MarketSort = .marketCap
@@ -34,6 +34,7 @@ final class AddCoinViewModel {
 
     private let api: CoinGeckoAPI
     private var searchTask: Task<Void, Never>?
+    private var categoryTask: Task<Void, Never>?
     private var browseRequestID = 0
 
     var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -68,24 +69,57 @@ final class AddCoinViewModel {
         await reloadBrowseList()
     }
 
+    /// Waits briefly so a burst of chip taps results in a single reload.
+    private func scheduleCategoryReload() {
+        categoryTask?.cancel()
+        // Drop any in-flight response for the old selection and show the loading state right away.
+        browseRequestID += 1
+        browseResults = []
+        isLoading = true
+        categoryTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            await self?.reloadBrowseList()
+        }
+    }
+
     /// Always refetches for the selected category (used by pull-to-refresh and chip changes).
     /// Only the most recent request may update state, so a slow earlier response can't overwrite it.
     func reloadBrowseList() async {
         browseRequestID += 1
         let requestID = browseRequestID
-        let category = selectedCategory.apiID
+        let categoryIDs = selectedCategories.compactMap(\.apiID).sorted()
         isLoading = true
 
         // Unstructured (inherits the main actor) so SwiftUI cancelling the refresh gesture doesn't abort the request.
         await Task {
             let outcome: Result<[CoinMarketDTO], Error>
             do {
-                outcome = .success(try await api.topMarkets(page: 1, perPage: 50, category: category))
+                outcome = .success(try await fetchBrowseResults(categoryIDs: categoryIDs, requestID: requestID))
             } catch {
                 outcome = .failure(error)
             }
             finishBrowseLoad(outcome, requestID: requestID)
         }.value
+    }
+
+    /// CoinGecko takes one category per request, so several chips are fetched one after another,
+    /// de-duplicated and put back in market-cap order.
+    /// Stops between requests once a newer reload has superseded this one.
+    private func fetchBrowseResults(categoryIDs: [String], requestID: Int) async throws -> [CoinMarketDTO] {
+        guard categoryIDs.count > 1 else {
+            return try await api.topMarkets(page: 1, perPage: 50, category: categoryIDs.first)
+        }
+
+        var seen = Set<String>()
+        var merged: [CoinMarketDTO] = []
+        for id in categoryIDs {
+            guard requestID == browseRequestID else { throw CancellationError() }
+            for coin in try await api.topMarkets(page: 1, perPage: 50, category: id) where seen.insert(coin.id).inserted {
+                merged.append(coin)
+            }
+        }
+        return merged.sorted { ($0.marketCap ?? 0) > ($1.marketCap ?? 0) }
     }
 
     private func finishBrowseLoad(_ outcome: Result<[CoinMarketDTO], Error>, requestID: Int) {

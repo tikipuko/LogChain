@@ -31,7 +31,7 @@ struct MarketsView: View {
             // Attached to the Group (not the list) so the chips stay available while loading or after an error.
             .safeAreaInset(edge: .top, spacing: 0) {
                 if !viewModel.isSearching {
-                    MarketsCategoryChips(selection: $viewModel.selectedCategory)
+                    MarketsCategoryChips(selection: $viewModel.selectedCategories)
                         .background(.bar)
                 }
             }

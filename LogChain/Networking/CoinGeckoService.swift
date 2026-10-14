@@ -24,6 +24,11 @@ final class CoinGeckoService: CoinGeckoAPI {
     }
 
     func topMarkets(page: Int, perPage: Int, category: String?) async throws -> [CoinMarketDTO] {
+        let cacheKey = "top|\(category ?? "all")|\(page)|\(perPage)"
+        if let cached = await cache.value(for: cacheKey) {
+            return cached
+        }
+
         var components = URLComponents(url: baseURL.appendingPathComponent("coins/markets"), resolvingAgainstBaseURL: false)!
         components.queryItems = [
             URLQueryItem(name: "vs_currency", value: "usd"),
@@ -36,7 +41,9 @@ final class CoinGeckoService: CoinGeckoAPI {
             components.queryItems?.append(URLQueryItem(name: "category", value: category))
         }
         await rateLimiter.acquire()
-        return try await httpClient.get(components.url!)
+        let result: [CoinMarketDTO] = try await httpClient.get(components.url!)
+        await cache.store(result, for: cacheKey)
+        return result
     }
 
     func markets(ids: [String]) async throws -> [CoinMarketDTO] {

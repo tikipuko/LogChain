@@ -7,14 +7,24 @@
 
 import SwiftUI
 
+/// Multi-select category chips. An empty selection means "All".
 struct MarketsCategoryChips: View {
-    @Binding var selection: MarketCategory
+    @Binding var selection: Set<MarketCategory>
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(MarketCategory.allCases) { category in
-                    chip(for: category)
+                chip(title: MarketCategory.all.title, isSelected: selection.isEmpty) {
+                    selection = []
+                }
+                ForEach(MarketCategory.allCases.filter { $0 != .all }) { category in
+                    chip(title: category.title, isSelected: selection.contains(category)) {
+                        if selection.contains(category) {
+                            selection.remove(category)
+                        } else {
+                            selection.insert(category)
+                        }
+                    }
                 }
             }
             .padding(.horizontal)
@@ -22,12 +32,9 @@ struct MarketsCategoryChips: View {
         }
     }
 
-    private func chip(for category: MarketCategory) -> some View {
-        let isSelected = category == selection
-        return Button {
-            selection = category
-        } label: {
-            Text(category.title)
+    private func chip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
                 .font(.subheadline.weight(.medium))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
